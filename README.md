@@ -368,6 +368,81 @@ pipeline {
 }
 ```
 
+## Part 7: Sample scripts for reading logs.
+
+```
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'DURATION',
+            choices: ['1', '2', '5'],
+            description: 'How many minutes to tail logs'
+        )
+        choice(
+            name: 'TARGET',
+            choices: ['api_livekit', 'api_livekit_sip_dispatcher', 'both'],
+            description: 'Which container to stream logs from'
+        )
+    }
+
+    stages {
+        stage('Live Logs') {
+            parallel {
+
+                stage('Control (api_livekit)') {
+                    when {
+                        expression {
+                            params.TARGET == 'api_livekit' || params.TARGET == 'both'
+                        }
+                    }
+                    steps {
+                        sshagent(['livekit-agent-server-key']) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no developer@13.234.150.174 \
+                                'timeout ${params.DURATION}m docker logs -f --tail=50 api_livekit || true'
+                            """
+                        }
+                    }
+                }
+
+                stage('Dispatcher (api_livekit_sip_dispatcher)') {
+                    when {
+                        expression {
+                            params.TARGET == 'api_livekit_sip_dispatcher' || params.TARGET == 'both'
+                        }
+                    }
+                    steps {
+                        sshagent(['livekit-agent-server-key']) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no developer@13.234.150.174 \
+                                'timeout ${params.DURATION}m docker logs -f --tail=50 api_livekit_sip_dispatcher || true'
+                            """
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Log streaming completed after ${params.DURATION} minute(s)"
+        }
+        failure {
+            echo "❌ Log streaming failed — check SSH credentials or container name"
+        }
+        aborted {
+            echo "⚠️ Log streaming was manually stopped"
+        }
+    }
+}
+
+```
+
 ---
 
 ## Quick Reference Checklist
