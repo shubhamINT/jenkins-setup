@@ -20,9 +20,26 @@
 
 ### Prerequisites
 - Docker installed
-- Dockerfile built: `docker build -t myjenkins-blueocean:2.555.1-1 .`
+- Dockerfile present (clone this repo)
 
-### Step 1 — Create Docker Network
+### Step 1 — Build the Jenkins Image
+
+```bash
+git clone https://github.com/shubhamINT/jenkins-setup.git
+cd jenkins-setup
+docker build -t myjenkins-blueocean:2.555.1-1 .
+```
+
+> ⚠️ This step is required. `docker run` will fail with "pull access denied" if you skip it — the image is local-only, not on Docker Hub.
+
+Verify image built:
+```bash
+docker images | grep myjenkins
+```
+
+---
+
+### Step 2 — Create Docker Network
 
 ```bash
 docker network create jenkins
