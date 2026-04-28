@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        REMOTE_DIR    = 'ai_website_backend/'
+        SCRIPT_SERVER   = 'deploy.sh'
+        SERVER_HOST = 'developer@13.232.78.99'
+        SSH_CREDS_ID  = 'ssh-key'
+    }
+
+    options {
+        timestamps()
+        timeout(time: 5, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+
+        stage('Deploy → Server 1') {
+            steps {
+                echo "▶ Connecting to Server: ${env.SERVER_HOST}"
+                sshagent(credentials: ["${env.SSH_CREDS_ID}"]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} '
+                            set -e
+                            echo "[Server] cd into ${env.REMOTE_DIR}"
+                            cd ${env.REMOTE_DIR}
+                            echo "[Server] Running git pull..."
+                            git pull
+                            echo "[Server] Running ${env.SCRIPT_SERVER}..."
+                            bash ${env.SCRIPT_SERVER}
+                            echo "[Server] Done!"
+                        '
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo '✅ Server deployed successfully!'
+        }
+        failure {
+            echo '❌ Deployment failed — check the stage logs above.'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
