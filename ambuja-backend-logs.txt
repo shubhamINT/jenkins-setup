@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVER_HOST  = 'developer@13.205.194.139'
+        SSH_CREDS_ID = 'ssh-key'
+        PM2_APP      = 'ambuja_backend'
+    }
+
+    parameters {
+        choice(
+            name: 'DURATION',
+            choices: ['1', '2', '5'],
+            description: 'How many minutes to stream logs'
+        )
+    }
+
+    stages {
+        stage('Live Logs') {
+            steps {
+                script {
+                    sshagent([env.SSH_CREDS_ID]) {
+                        sh """
+                            echo "▶ Streaming ${env.PM2_APP} on ${env.SERVER_HOST} for ${params.DURATION} min(s)..."
+                            ssh -tt -o StrictHostKeyChecking=no ${env.SERVER_HOST} \
+                                "source ~/.nvm/nvm.sh && timeout ${params.DURATION}m pm2 logs ${env.PM2_APP} --lines 50 2>&1 | stdbuf -oL sed 's/^/[ambuja-backend] /'" || true
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Logs streamed successfully for ${params.DURATION} minute(s)"
+        }
+        failure {
+            echo "❌ Log streaming failed — check SSH / pm2 process name"
+        }
+        aborted {
+            echo "⚠️ Stopped manually by user"
+        }
+    }
+}
