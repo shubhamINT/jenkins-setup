@@ -1,15 +1,10 @@
 # 🚀 Jenkins SSH Setup Guide
 > Step-by-step guide to connect Jenkins to remote servers using SSH keys and trigger scripts/deployments — no passwords needed!
 
-
-# Access the administrator pas for first login
-```
-docker exec -it <container_name> cat /var/jenkins_home/secrets/initialAdminPassword
-```
-
 ---
 
 ## 📋 Table of Contents
+- [Part 0: Run Jenkins with Docker](#part-0-run-jenkins-with-docker)
 - [Overview](#overview)
 - [Part 1: Generate SSH Key Pair on Jenkins Server](#part-1-generate-ssh-key-pair-on-jenkins-server)
 - [Part 2: Set Up Remote Server](#part-2-set-up-remote-server)
@@ -18,6 +13,130 @@ docker exec -it <container_name> cat /var/jenkins_home/secrets/initialAdminPassw
 - [Part 5: Create the Jenkins Pipeline](#part-5-create-the-jenkins-pipeline)
 - [Part 6: Pipeline for Multiple Servers](#part-6-pipeline-for-multiple-servers)
 - [Quick Reference Checklist](#quick-reference-checklist)
+
+---
+
+## Part 0: Run Jenkins with Docker
+
+### Prerequisites
+- Docker installed
+- Dockerfile present (clone this repo)
+
+### Step 1 — Build the Jenkins Image
+
+```bash
+git clone https://github.com/shubhamINT/jenkins-setup.git
+cd jenkins-setup
+docker build -t myjenkins-blueocean:2.555.1-1 .
+```
+
+> ⚠️ This step is required. `docker run` will fail with "pull access denied" if you skip it — the image is local-only, not on Docker Hub.
+
+Verify image built:
+```bash
+docker images | grep myjenkins
+```
+
+---
+
+### Step 2 — Create Docker Network
+
+```bash
+docker network create jenkins
+```
+
+---
+
+### Step 2 — Run Docker-in-Docker (dind)
+
+Allows Jenkins to run Docker commands inside pipelines.
+
+```bash
+docker run \
+  --name jenkins-docker \
+  --detach \
+  --restart=unless-stopped \
+  --privileged \
+  --network jenkins \
+  --network-alias docker \
+  --env DOCKER_TLS_CERTDIR=/certs \
+  --volume jenkins-docker-certs:/certs/client \
+  --volume jenkins-data:/var/jenkins_home \
+  docker:dind \
+  --storage-driver overlay2
+```
+
+| Flag | Why |
+|------|-----|
+| `--restart=unless-stopped` | Auto-restarts after EC2/server reboot |
+| `--privileged` | Required for Docker-in-Docker |
+| `--network-alias docker` | Jenkins container reaches it via hostname `docker` |
+| No `--publish 2376` | Docker daemon not exposed to host — unnecessary attack surface |
+
+> ⚠️ Pull image first if needed: `docker image pull docker:dind`
+
+---
+
+### Step 3 — Run Jenkins
+
+```bash
+docker run \
+  --name jenkins-blueocean \
+  --detach \
+  --restart=unless-stopped \
+  --network jenkins \
+  --env DOCKER_HOST=tcp://docker:2376 \
+  --env DOCKER_CERT_PATH=/certs/client \
+  --env DOCKER_TLS_VERIFY=1 \
+  --publish 4000:8080 \
+  --publish 50000:50000 \
+  --volume jenkins-data:/var/jenkins_home \
+  --volume jenkins-docker-certs:/certs/client:ro \
+  myjenkins-blueocean:2.555.1-1
+```
+
+| Flag | Why |
+|------|-----|
+| `--restart=unless-stopped` | Auto-restarts after EC2/server reboot |
+| `--publish 4000:8080` | Jenkins UI available at `http://YOUR_IP:4000` |
+| `--publish 50000:50000` | Required if external Jenkins build agents connect to this controller |
+| `jenkins-data` volume | All Jenkins config/jobs persist across container restarts |
+| `jenkins-docker-certs` volume | TLS certs shared between dind and Jenkins |
+
+> 💡 Port `50000` is only needed if you have remote inbound Jenkins agents. Skip `--publish 50000:50000` for standalone setups.
+
+---
+
+### Step 4 — Get Initial Admin Password
+
+```bash
+docker exec -it jenkins-blueocean cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+Access Jenkins at: `http://YOUR_SERVER_IP:4000`
+
+---
+
+### Surviving Server Reboots
+
+Both containers use `--restart=unless-stopped`. On EC2 reboot:
+- `jenkins-docker` (dind) restarts automatically ✅
+- `jenkins-blueocean` restarts automatically ✅
+- `jenkins-data` Docker volume persists — all jobs/config safe ✅
+
+---
+
+### Stop / Start
+
+```bash
+# Stop
+docker stop jenkins-blueocean jenkins-docker
+
+# Start
+docker start jenkins-docker jenkins-blueocean
+```
+
+> ⚠️ Always start `jenkins-docker` (dind) **before** `jenkins-blueocean`.
 
 ---
 
