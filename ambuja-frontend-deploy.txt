@@ -3,14 +3,15 @@ pipeline {
 
     environment {
         SERVER_HOST  = 'developer@13.205.194.139'
-        PROJECT_DIR  = '~/Ambuja_ai_recruiter/backend'
-        PM2_APP_NAME = 'ambuja_backend'
+        PROJECT_DIR  = '~/Ambuja_ai_recruiter/frontend'
+        PM2_APP_NAME = 'ambuja_frontend'
         SSH_CREDS_ID = 'ssh-key'
+        PORT = '3000'
     }
 
     stages {
 
-        stage('Deploy Ambuja Backend') {
+        stage('Deploy Ambuja Frontend') {
             steps {
                 sshagent([env.SSH_CREDS_ID]) {
                     sh """
@@ -18,8 +19,7 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} "
                             source ~/.nvm/nvm.sh &&
                             cd ${env.PROJECT_DIR} &&
-                            npm install --omit=dev &&
-                            pm2 restart ${env.PM2_APP_NAME} 2>/dev/null || pm2 start src/server.js --name ${env.PM2_APP_NAME} &&
+                            pm2 restart ${env.PM2_APP_NAME} 2>/dev/null || pm2 start \"npx serve -s dist --single -l ${env.PORT}\" --name ${env.PM2_APP_NAME} &&
                             pm2 status ${env.PM2_APP_NAME}
                         "
                     """
