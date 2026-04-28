@@ -38,8 +38,8 @@ pipeline {
                         sshagent([env.SSH_CREDS_ID]) {
                             sh """
                                 echo "▶ Streaming ${env.CONTAINER_1} on ${env.SERVER_1_HOST} for ${params.DURATION} min(s)..."
-                                ssh -o StrictHostKeyChecking=no ${env.SERVER_1_HOST} \
-                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_1} 2>&1 | sed 's/^/[api] /'" || true
+                                ssh -tt -o StrictHostKeyChecking=no ${env.SERVER_1_HOST} \
+                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_1} 2>&1 | stdbuf -oL sed 's/^/[api] /'" || true
                             """
                         }
                     }
@@ -56,8 +56,8 @@ pipeline {
                         sshagent([env.SSH_CREDS_ID]) {
                             sh """
                                 echo "▶ Streaming ${env.CONTAINER_2} on ${env.SERVER_1_HOST} for ${params.DURATION} min(s)..."
-                                ssh -o StrictHostKeyChecking=no ${env.SERVER_1_HOST} \
-                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_2} 2>&1 | sed 's/^/[DISPATCHER] /'" || true
+                                ssh -tt -o StrictHostKeyChecking=no ${env.SERVER_1_HOST} \
+                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_2} 2>&1 | stdbuf -oL sed 's/^/[DISPATCHER] /'" || true
                             """
                         }
                     }
@@ -74,8 +74,8 @@ pipeline {
                         sshagent([env.SSH_CREDS_ID]) {
                             sh """
                                 echo "▶ Streaming ${env.CONTAINER_3} on ${env.SERVER_2_HOST} for ${params.DURATION} min(s)..."
-                                ssh -o StrictHostKeyChecking=no ${env.SERVER_2_HOST} \
-                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_3} 2>&1 | sed 's/^/[AGENT] /'" || true
+                                ssh -tt -o StrictHostKeyChecking=no ${env.SERVER_2_HOST} \
+                                    "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER_3} 2>&1 | stdbuf -oL sed 's/^/[AGENT] /'" || true
                             """
                         }
                     }

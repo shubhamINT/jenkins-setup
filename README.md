@@ -520,7 +520,7 @@ pipeline {
                     steps {
                         sshagent(['livekit-agent-server-key']) {
                             sh """
-                                ssh -o StrictHostKeyChecking=no developer@13.234.150.174 \
+                                ssh -tt -o StrictHostKeyChecking=no developer@13.234.150.174 \
                                 'timeout ${params.DURATION}m docker logs -f --tail=50 api_livekit || true'
                             """
                         }
@@ -536,7 +536,7 @@ pipeline {
                     steps {
                         sshagent(['livekit-agent-server-key']) {
                             sh """
-                                ssh -o StrictHostKeyChecking=no developer@13.234.150.174 \
+                                ssh -tt -o StrictHostKeyChecking=no developer@13.234.150.174 \
                                 'timeout ${params.DURATION}m docker logs -f --tail=50 api_livekit_sip_dispatcher || true'
                             """
                         }

@@ -22,8 +22,8 @@ pipeline {
                     sshagent([env.SSH_CREDS_ID]) {
                         sh """
                             echo "▶ Streaming ${env.CONTAINER} on ${env.SERVER_HOST} for ${params.DURATION} min(s)..."
-                            ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} \
-                                "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER} 2>&1 | sed 's/^/[intvyom-api] /'" || true
+                            ssh -tt -o StrictHostKeyChecking=no ${env.SERVER_HOST} \
+                                "timeout ${params.DURATION}m docker logs -f --tail=50 ${env.CONTAINER} 2>&1 | stdbuf -oL sed 's/^/[intvyom-api] /'" || true
                         """
                     }
                 }
