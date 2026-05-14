@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVER_HOST  = 'developer@10.10.3.83'
+        PROJECT_DIR  = '~/onespace_agui-backend'
+        SSH_CREDS_ID = 'ssh-key'
+    }
+
+    stages {
+
+        stage('Deploy Onespace AGUI Backend') {
+            steps {
+                sshagent([env.SSH_CREDS_ID]) {
+                    sh """
+                        echo "▶ Deploying Onespace AGUI Backend on ${env.SERVER_HOST}..."
+                        ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} "
+                            cd ${env.PROJECT_DIR} &&
+                            bash deploy.sh
+                        "
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "✅ Onespace AGUI Backend deployed successfully."
+        }
+        failure {
+            echo "❌ Deployment failed — check Console Output."
+        }
+    }
+}
