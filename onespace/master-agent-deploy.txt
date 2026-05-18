@@ -15,7 +15,12 @@ pipeline {
                     sh """
                         echo "▶ Deploying Onespace Master Agent on ${env.SERVER_HOST}..."
                         ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} "
+                            echo '🧹 Pruning unused Docker resources...' &&
+                            docker system prune -a -f &&
                             cd ${env.PROJECT_DIR} &&
+                            echo 'Pulling the latest code...' &&
+                            git pull origin main &&
+                            echo 'Deploying the service...' &&
                             bash deploy.sh
                         "
                     """
