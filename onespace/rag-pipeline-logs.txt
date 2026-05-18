@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'STREAM_MINUTES', choices: ['1', '3', '5'], description: 'How long to stream logs')
+    }
+
+    environment {
+        SERVER_HOST    = 'developer@10.10.3.83'
+        CONTAINER_NAME = 'onespace-rag-pipeline'
+        TAIL_LINES     = '200'
+        STREAM_SECONDS = "${params.STREAM_MINUTES.toInteger() * 60}"
+        SSH_CREDS_ID   = 'ssh-key'
+    }
+
+    stages {
+
+        stage('Stream RAG Pipeline Logs') {
+            steps {
+                sshagent([env.SSH_CREDS_ID]) {
+                    sh """
+                        echo "▶ Live logs for ${env.CONTAINER_NAME} on ${env.SERVER_HOST}..."
+                        ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} "
+                            timeout ${env.STREAM_SECONDS} docker logs -f --tail=${env.TAIL_LINES} ${env.CONTAINER_NAME} || true
+                        "
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            echo "✅ Log stream ended for ${env.CONTAINER_NAME}."
+        }
+        failure {
+            echo "❌ Failed — container may not be running. Check: docker ps"
+        }
+    }
+}
