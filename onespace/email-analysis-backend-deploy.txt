@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVER_HOST  = 'developer@10.10.3.83'
+        PROJECT_DIR  = '~/email-intelli-widget'
+        SSH_CREDS_ID = 'ssh-key'
+    }
+
+    stages {
+
+        stage('Deploy Email Analysis Backend') {
+            steps {
+                sshagent([env.SSH_CREDS_ID]) {
+                    sh """
+                        echo "▶ Deploying Email Analysis Backend on ${env.SERVER_HOST}..."
+                        ssh -o StrictHostKeyChecking=no ${env.SERVER_HOST} "
+                            echo '🧹 Pruning unused Docker resources...' &&
+                            docker system prune -a -f &&
+                            cd ${env.PROJECT_DIR} &&
+                            echo 'Pulling the latest code...' &&
+                            git pull origin main &&
+                            echo 'Deploying the service...' &&
+                            bash deploy-backend.sh
+                        "
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "✅ Email Analysis Backend deployed successfully."
+        }
+        failure {
+            echo "❌ Deployment failed — check Console Output."
+        }
+    }
+}
