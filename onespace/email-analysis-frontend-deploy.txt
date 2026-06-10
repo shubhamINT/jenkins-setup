@@ -19,7 +19,7 @@ pipeline {
                             docker system prune -a -f &&
                             cd ${env.PROJECT_DIR} &&
                             echo 'Pulling the latest code...' &&
-                            git pull origin main &&
+                            git pull origin deploy &&
                             echo 'Deploying the service...' &&
                             bash deploy-frontend.sh
                         "
